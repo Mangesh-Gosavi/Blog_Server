@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors({ origin: 'https://freedom-blogs-wine.vercel.app' }));
 
 let date = new Date().toISOString().slice(0, 10);
 
