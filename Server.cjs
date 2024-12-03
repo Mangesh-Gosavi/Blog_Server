@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
-const jwtDecode = require('jsonwebtoken'); 
+const jwtDecode = require('jsonwebtoken');
 
 dotenv.config();
 const app = express();
@@ -49,7 +49,7 @@ const PostSchema = new mongoose.Schema({
     title: String,
     content: String,
     email: String,
-    saved : String,
+    saved: String,
     date: { type: Date, default: Date.now },
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'blog_Review' }]
 
@@ -81,7 +81,7 @@ function authenticateToken(req, res, next) {
     const token = req.headers['authorization'];
     if (!token) return res.status(403).json({ message: 'No token provided' });
 
-    jwt.verify(token.split(' ')[1], process.env.JWT_SECRET, (err, user) => { 
+    jwt.verify(token.split(' ')[1], process.env.JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ message: 'Failed to authenticate token' });
         req.user = user;
         next();
@@ -97,9 +97,9 @@ app.get('/login', async (req, res) => {
         const user = await User.findOne({ email: data.email });
         if (user && (await bcrypt.compare(data.password, user.password))) {
             const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '2h' });
-            return res.status(200).json({ 
-                login: 'successful', 
-                token, 
+            return res.status(200).json({
+                login: 'successful',
+                token,
                 email: user.email
             });
         } else {
@@ -120,10 +120,10 @@ app.post('/signup', async (req, res) => {
     try {
         await user.save();
         const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '2h' });
-        res.status(200).json({ 
-            login: 'successful', 
-            token, 
-            email: user.email 
+        res.status(200).json({
+            login: 'successful',
+            token,
+            email: user.email
         });
     } catch (error) {
         if (error.code === 11000) {
@@ -166,9 +166,9 @@ app.get('/blog/:postId', async (req, res) => {
 
 
 app.post('/posts/:id/save', async (req, res) => {
-    const { id } = req.params; 
-    const { saved , email } = req.body; 
-    const token = req.headers.authorization?.split(" ")[1]; 
+    const { id } = req.params;
+    const { saved, email } = req.body;
+    const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
         return res.status(401).json({ success: false, message: 'No token provided' });
@@ -190,7 +190,7 @@ app.post('/posts/:id/save', async (req, res) => {
         res.status(200).json({
             success: true,
             message: saved ? 'Post saved' : 'Post unsaved',
-            postIds: favorite.postIds 
+            postIds: favorite.postIds
         });
 
     } catch (error) {
@@ -210,12 +210,15 @@ app.get('/favorites', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const email = decoded.email;
 
-        const favorite = await Favorite.findOne({ userEmail: email });
-        if (!favorite || !favorite.postIds.length) {
+        const favorite = await Favorite.find({ userEmail: email });
+        console.log("faviorates:", favorite);
+
+        if (!favorite) {
             return res.status(200).json({ success: true, data: [] });
         }
 
-        const posts = await Post.find({ postId: { $in: favorite.postIds } });
+        const postIds = favorite.map(fav => (fav.postIds))
+        const posts = await Post.find({ postId: { $in: postIds } });
 
         res.status(200).json({ success: true, data: posts });
     } catch (error) {
@@ -225,9 +228,9 @@ app.get('/favorites', async (req, res) => {
 });
 
 app.post('/removefav', authenticateToken, async (req, res) => {
-    const { postId, email } = req.body; 
+    const { postId, email } = req.body;
     const token = req.headers.authorization?.split(' ')[1];
-    
+
     if (!token) {
         return res.status(401).json({ success: false, message: 'No token provided' });
     }
@@ -257,7 +260,7 @@ app.post('/removefav', authenticateToken, async (req, res) => {
 
 
 app.post('/addpost', authenticateToken, async (req, res) => {
-    const { title, content ,email} = req.body;
+    const { title, content, email } = req.body;
 
     try {
         const newPost = new Post({
@@ -291,7 +294,7 @@ app.post('/removepost', authenticateToken, async (req, res) => {
 
 
 app.post('/addreviews', authenticateToken, async (req, res) => {
-    const { postId,  email, text  } = req.body;
+    const { postId, email, text } = req.body;
 
     try {
         const newReview = new Review({
@@ -308,24 +311,6 @@ app.post('/addreviews', authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to add Comment' });
     }
 });
-
-
-// app.post('/deletereview', authenticateToken, async (req, res) => {
-//     const { reviewId } = req.body;
-
-//     try {
-//         const review = await Review.findOneAndDelete({ reviewId });
-//         if (review) {
-//             await Post.updateOne({ postId: review.postId }, { $pull: { comments: review._id } });
-//             res.status(200).json({ success: true, message: 'Comment deleted successfully' });
-//         } else {
-//             res.status(404).json({ success: false, message: 'Comment not found' });
-//         }
-//     } catch (error) {
-//         console.error('Error deleting Comment:', error);
-//         res.status(500).json({ success: false, message: 'Failed to delete Comment' });
-//     }
-// });
 
 app.get("/logout", authenticateToken, (req, res) => {
     console.log("Logout successful");
